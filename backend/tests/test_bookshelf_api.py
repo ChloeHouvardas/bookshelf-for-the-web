@@ -71,3 +71,9 @@ def test_duplicate_resource_url_is_rejected(client: TestClient) -> None:
     assert client.post("/resources", json=payload).status_code == 201
     response = client.post("/resources", json=payload)
     assert response.status_code == 409
+
+
+def test_duplicate_book_title_is_rejected(client: TestClient) -> None:
+    assert client.post("/books", json={"title": "AI Resources"}).status_code == 201
+    response = client.post("/books", json={"title": " ai   resources "})
+    assert response.status_code == 409

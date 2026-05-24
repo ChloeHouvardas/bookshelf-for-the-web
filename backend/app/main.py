@@ -56,6 +56,10 @@ def column(value: Any) -> ColumnElement[Any]:
     return cast(ColumnElement[Any], value)
 
 
+def normalize_name(value: str) -> str:
+    return " ".join(value.strip().lower().split())
+
+
 def serialize_resource(resource: Resource) -> ResourceRead:
     return ResourceRead(
         id=resource.id or 0,
@@ -97,6 +101,13 @@ def read_bookshelf(session: Session = Depends(get_session)) -> BookshelfRead:
 
 @app.post("/books", response_model=BookRead, status_code=status.HTTP_201_CREATED)
 def create_book(payload: BookCreate, session: Session = Depends(get_session)) -> Book:
+    normalized_title = normalize_name(payload.title)
+    existing_books = session.exec(select(Book)).all()
+    if any(normalize_name(book.title) == normalized_title for book in existing_books):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A book with this title already exists",
+        )
     book = Book.model_validate(payload)
     session.add(book)
     session.commit()

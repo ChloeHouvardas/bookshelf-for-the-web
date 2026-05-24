@@ -16,6 +16,7 @@ function App() {
   const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
   const selectedBook = useMemo(
     () => books.find((book) => book.id === selectedBookId) ?? null,
@@ -55,8 +56,10 @@ function App() {
 
   async function createBook(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingAction) return;
     const form = event.currentTarget;
     try {
+      setPendingAction("book");
       setError(null);
       const data = new FormData(form);
       const color = String(data.get("color") || bookColors[0]);
@@ -69,14 +72,18 @@ function App() {
       await loadAll(book.id);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add book");
+    } finally {
+      setPendingAction(null);
     }
   }
 
   async function createSection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingAction) return;
     if (!selectedBookId) return;
     const form = event.currentTarget;
     try {
+      setPendingAction("section");
       setError(null);
       const data = new FormData(form);
       await api.createSection(selectedBookId, { title: String(data.get("title")) });
@@ -84,13 +91,17 @@ function App() {
       await loadAll(selectedBookId);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add section");
+    } finally {
+      setPendingAction(null);
     }
   }
 
   async function createResource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingAction) return;
     const form = event.currentTarget;
     try {
+      setPendingAction("resource");
       setError(null);
       const data = new FormData(form);
       const tagNames = String(data.get("tags") || "")
@@ -109,13 +120,17 @@ function App() {
       await loadAll(selectedBookId);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save resource");
+    } finally {
+      setPendingAction(null);
     }
   }
 
   async function placeResource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pendingAction) return;
     const form = event.currentTarget;
     try {
+      setPendingAction("placement");
       setError(null);
       const data = new FormData(form);
       await api.createPlacement({
@@ -126,6 +141,8 @@ function App() {
       await loadAll(selectedBookId);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not place resource");
+    } finally {
+      setPendingAction(null);
     }
   }
 
@@ -185,9 +202,9 @@ function App() {
                 </label>
               ))}
             </div>
-            <button type="submit">
+            <button type="submit" disabled={pendingAction === "book"}>
               <Plus size={16} aria-hidden="true" />
-              Add
+              {pendingAction === "book" ? "Adding..." : "Add"}
             </button>
           </form>
         </aside>
@@ -244,10 +261,15 @@ function App() {
         <aside className="panel actions-panel" aria-label="Actions">
           <form className="stacked-form" onSubmit={(event) => void createSection(event)}>
             <h3>New section</h3>
-            <input name="title" placeholder="Foundations" required disabled={!selectedBookId} />
-            <button type="submit" disabled={!selectedBookId}>
+            <input
+              name="title"
+              placeholder="Foundations"
+              required
+              disabled={!selectedBookId || pendingAction === "section"}
+            />
+            <button type="submit" disabled={!selectedBookId || pendingAction === "section"}>
               <BookmarkPlus size={16} aria-hidden="true" />
-              Add section
+              {pendingAction === "section" ? "Adding..." : "Add section"}
             </button>
           </form>
 
@@ -265,9 +287,9 @@ function App() {
               ))}
             </select>
             <input name="tags" placeholder="ai, basics, paper" />
-            <button type="submit">
+            <button type="submit" disabled={pendingAction === "resource"}>
               <Link size={16} aria-hidden="true" />
-              Save resource
+              {pendingAction === "resource" ? "Saving..." : "Save resource"}
             </button>
           </form>
 
@@ -289,9 +311,12 @@ function App() {
                 </option>
               ))}
             </select>
-            <button type="submit" disabled={!resources.length || !bookDetail?.sections.length}>
+            <button
+              type="submit"
+              disabled={!resources.length || !bookDetail?.sections.length || pendingAction === "placement"}
+            >
               <Tags size={16} aria-hidden="true" />
-              Place
+              {pendingAction === "placement" ? "Placing..." : "Place"}
             </button>
           </form>
         </aside>
