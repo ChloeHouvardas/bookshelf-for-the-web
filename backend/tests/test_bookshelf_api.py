@@ -1,0 +1,73 @@
+from collections.abc import Generator
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel.pool import StaticPool
+
+from app.database import get_session
+from app.main import app
+
+
+@pytest.fixture()
+def client() -> Generator[TestClient, None, None]:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    SQLModel.metadata.create_all(engine)
+
+    def override_session() -> Generator[Session, None, None]:
+        with Session(engine) as session:
+            yield session
+
+    app.dependency_overrides[get_session] = override_session
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+
+def test_resource_can_be_placed_in_multiple_books(client: TestClient) -> None:
+    first_book = client.post("/books", json={"title": "AI Basics", "color": "#b76e79"}).json()
+    second_book = client.post("/books", json={"title": "Research", "color": "#6f8f72"}).json()
+
+    first_section = client.post(
+        f"/books/{first_book['id']}/sections", json={"title": "Foundations"}
+    ).json()
+    second_section = client.post(
+        f"/books/{second_book['id']}/sections", json={"title": "Papers"}
+    ).json()
+
+    resource = client.post(
+        "/resources",
+        json={
+            "url": "https://example.com/article",
+            "title": "Useful Article",
+            "source_type": "article",
+            "tag_names": ["AI", "Basics"],
+        },
+    ).json()
+
+    client.post(
+        "/placements",
+        json={"resource_id": resource["id"], "section_id": first_section["id"]},
+    )
+    client.post(
+        "/placements",
+        json={"resource_id": resource["id"], "section_id": second_section["id"]},
+    )
+
+    first_detail = client.get(f"/books/{first_book['id']}").json()
+    second_detail = client.get(f"/books/{second_book['id']}").json()
+
+    assert first_detail["sections"][0]["placements"][0]["resource"]["title"] == "Useful Article"
+    assert second_detail["sections"][0]["placements"][0]["resource"]["title"] == "Useful Article"
+    assert [tag["name"] for tag in resource["tags"]] == ["ai", "basics"]
+
+
+def test_duplicate_resource_url_is_rejected(client: TestClient) -> None:
+    payload = {"url": "https://example.com/reused", "title": "One"}
+    assert client.post("/resources", json=payload).status_code == 201
+    response = client.post("/resources", json=payload)
+    assert response.status_code == 409
