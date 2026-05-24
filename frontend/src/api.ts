@@ -1,15 +1,32 @@
 import type { Book, BookDetail, Bookshelf, Resource, SourceType } from "./types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+function getApiBaseUrl() {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+
+  if (typeof window === "undefined") {
+    return "http://127.0.0.1:8000";
+  }
+
+  return `${window.location.protocol}//${window.location.hostname}:8000`;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+      ...options,
+    });
+  } catch {
+    throw new Error(`Could not reach the API at ${API_BASE_URL}`);
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => ({ detail: "Request failed" }));
@@ -45,4 +62,3 @@ export const api = {
   deletePlacement: (placementId: number) =>
     request(`/placements/${placementId}`, { method: "DELETE" }),
 };
-

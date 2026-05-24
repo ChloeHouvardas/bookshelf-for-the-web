@@ -44,65 +44,99 @@ function App() {
   }, [loadAll]);
 
   async function selectBook(bookId: number) {
-    setSelectedBookId(bookId);
-    setBookDetail(await api.book(bookId));
+    try {
+      setError(null);
+      setSelectedBookId(bookId);
+      setBookDetail(await api.book(bookId));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not open book");
+    }
   }
 
   async function createBook(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const color = String(data.get("color") || bookColors[0]);
-    const book = await api.createBook({
-      title: String(data.get("title")),
-      description: String(data.get("description") || ""),
-      color,
-    });
-    event.currentTarget.reset();
-    await loadAll(book.id);
+    const form = event.currentTarget;
+    try {
+      setError(null);
+      const data = new FormData(form);
+      const color = String(data.get("color") || bookColors[0]);
+      const book = await api.createBook({
+        title: String(data.get("title")),
+        description: String(data.get("description") || ""),
+        color,
+      });
+      form.reset();
+      await loadAll(book.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not add book");
+    }
   }
 
   async function createSection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedBookId) return;
-    const data = new FormData(event.currentTarget);
-    await api.createSection(selectedBookId, { title: String(data.get("title")) });
-    event.currentTarget.reset();
-    await loadAll(selectedBookId);
+    const form = event.currentTarget;
+    try {
+      setError(null);
+      const data = new FormData(form);
+      await api.createSection(selectedBookId, { title: String(data.get("title")) });
+      form.reset();
+      await loadAll(selectedBookId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not add section");
+    }
   }
 
   async function createResource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const tagNames = String(data.get("tags") || "")
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean);
-    await api.createResource({
-      url: String(data.get("url")),
-      title: String(data.get("title")),
-      description: String(data.get("description") || ""),
-      notes: String(data.get("notes") || ""),
-      source_type: String(data.get("source_type")) as SourceType,
-      tag_names: tagNames,
-    });
-    event.currentTarget.reset();
-    await loadAll(selectedBookId);
+    const form = event.currentTarget;
+    try {
+      setError(null);
+      const data = new FormData(form);
+      const tagNames = String(data.get("tags") || "")
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      await api.createResource({
+        url: String(data.get("url")),
+        title: String(data.get("title")),
+        description: String(data.get("description") || ""),
+        notes: String(data.get("notes") || ""),
+        source_type: String(data.get("source_type")) as SourceType,
+        tag_names: tagNames,
+      });
+      form.reset();
+      await loadAll(selectedBookId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not save resource");
+    }
   }
 
   async function placeResource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    await api.createPlacement({
-      resource_id: Number(data.get("resource_id")),
-      section_id: Number(data.get("section_id")),
-    });
-    event.currentTarget.reset();
-    await loadAll(selectedBookId);
+    const form = event.currentTarget;
+    try {
+      setError(null);
+      const data = new FormData(form);
+      await api.createPlacement({
+        resource_id: Number(data.get("resource_id")),
+        section_id: Number(data.get("section_id")),
+      });
+      form.reset();
+      await loadAll(selectedBookId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not place resource");
+    }
   }
 
   async function deletePlacement(placementId: number) {
-    await api.deletePlacement(placementId);
-    await loadAll(selectedBookId);
+    try {
+      setError(null);
+      await api.deletePlacement(placementId);
+      await loadAll(selectedBookId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not remove resource");
+    }
   }
 
   return (
