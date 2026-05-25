@@ -26,6 +26,18 @@ export type Resource = {
   updated_at: string;
 };
 
+export type ResourcePlacementSummary = {
+  placement_id: number;
+  book_id: number;
+  book_title: string;
+  section_id: number;
+  section_title: string;
+};
+
+export type ResourceWithPlacements = Resource & {
+  placements: ResourcePlacementSummary[];
+};
+
 export type Placement = {
   id: number;
   resource: Resource;
@@ -53,4 +65,3 @@ export type Bookshelf = {
   books: Book[];
   resources_count: number;
 };
-

@@ -79,6 +79,18 @@ class ResourceRead(SQLModel):
     updated_at: datetime
 
 
+class ResourcePlacementSummary(SQLModel):
+    placement_id: int
+    book_id: int
+    book_title: str
+    section_id: int
+    section_title: str
+
+
+class ResourceWithPlacements(ResourceRead):
+    placements: list[ResourcePlacementSummary]
+
+
 class PlacementCreate(SQLModel):
     resource_id: int
     section_id: int
@@ -101,7 +113,7 @@ class SectionDetail(SectionRead):
 class BookDetail(BookRead):
     sections: list[SectionDetail]
 
+
 class BookshelfRead(SQLModel):
     books: list[BookRead]
     resources_count: int
-

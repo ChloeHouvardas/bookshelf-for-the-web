@@ -1,4 +1,4 @@
-import type { Book, BookDetail, Bookshelf, Resource, SourceType } from "./types";
+import type { Book, BookDetail, Bookshelf, Resource, ResourceWithPlacements, SourceType } from "./types";
 
 function getApiBaseUrl() {
   if (import.meta.env.VITE_API_BASE_URL) {
@@ -49,6 +49,7 @@ export const api = {
   createSection: (bookId: number, payload: { title: string; position?: number }) =>
     request(`/books/${bookId}/sections`, { method: "POST", body: JSON.stringify(payload) }),
   resources: () => request<Resource[]>("/resources"),
+  resourcesWithPlacements: () => request<ResourceWithPlacements[]>("/resources/with-placements"),
   createResource: (payload: {
     url: string;
     title: string;

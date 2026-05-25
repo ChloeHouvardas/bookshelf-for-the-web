@@ -19,8 +19,10 @@ from app.schemas import (
     PlacementCreate,
     PlacementRead,
     ResourceCreate,
+    ResourcePlacementSummary,
     ResourceRead,
     ResourceUpdate,
+    ResourceWithPlacements,
     SectionCreate,
     SectionRead,
     SectionUpdate,
@@ -246,6 +248,37 @@ def create_resource(
 def list_resources(session: Session = Depends(get_session)) -> list[ResourceRead]:
     resources = session.exec(select(Resource).order_by(column(Resource.created_at))).all()
     return [serialize_resource(resource) for resource in resources]
+
+
+@app.get("/resources/with-placements", response_model=list[ResourceWithPlacements])
+def list_resources_with_placements(
+    session: Session = Depends(get_session),
+) -> list[ResourceWithPlacements]:
+    resources = session.exec(select(Resource).order_by(column(Resource.created_at))).all()
+    response: list[ResourceWithPlacements] = []
+    for resource in resources:
+        placements = session.exec(
+            select(ResourcePlacement)
+            .where(ResourcePlacement.resource_id == resource.id)
+            .order_by(column(ResourcePlacement.created_at))
+        ).all()
+        resource_data = serialize_resource(resource).model_dump()
+        response.append(
+            ResourceWithPlacements(
+                **resource_data,
+                placements=[
+                    ResourcePlacementSummary(
+                        placement_id=placement.id or 0,
+                        book_id=placement.section.book_id,
+                        book_title=placement.section.book.title,
+                        section_id=placement.section_id,
+                        section_title=placement.section.title,
+                    )
+                    for placement in placements
+                ],
+            )
+        )
+    return response
 
 
 @app.patch("/resources/{resource_id}", response_model=ResourceRead)
